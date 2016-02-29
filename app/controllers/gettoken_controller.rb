@@ -28,7 +28,6 @@ class GettokenController < ApplicationController
     if response.code == "201"
         body = response.read_body
         puts body
-        puts response.token
         render json: body
     end
   end

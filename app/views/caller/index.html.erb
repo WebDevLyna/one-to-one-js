@@ -1,0 +1,186 @@
+<!-- This file is used by the caller, used name is caller_uid, and it calls the callee named calle_uid -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>My Rtcc Application: Caller</title>
+    <script type="text/javascript" src="http://download.rtccloud.net/js/webappid/5vx1l3kvxfd3"></script>
+<style type="text/css">
+    body {
+        font-family: Helvetica;
+    }
+    #video-container {
+        width: 320px;
+        height: 180px;
+        border: 1px solid black;
+        background: #0074bc;
+        margin-top: 20px;
+    }
+    #error {
+        border: 4px solid red;
+        display: none;
+        width: 50%;
+        padding: 14px;
+    }
+    #error h1 {
+        margin: 0;
+    }
+</style>
+</head>
+<body>
+    <div id="error">
+        <h1>An error occurred:</h1>
+        <div id="error-content"></div>
+    </div>
+    <script type="text/javascript">
+        if (window.location.protocol === 'file:') { alert('your project must be served from a webserver and not from the file system'); }
+        // Here is the definition of the uid used by this user and the authentication url used in order to get a token
+        var UID_USER = 'caller_uid',
+            // If you are using our Java, Ruby or Node.js server-SDK uncomment the following line and replace the placeholder YOUR_AUTH_URL wuth your authentication client url
+            //AUTH_URL = 'http://YOUR_AUTH_URL/gettoken?uid=',
+						// If you are using our PHP server-SDK uncomment the following line and replace the placeholder YOUR_AUTH_URL wuth your authentication client url
+            AUTH_URL = 'http://localhost:3000/gettoken.php?uid=',
+            realTimeClient = '',
+            rtcc = {},
+            script,
+            // Define the optional parameters
+            options = {
+                displayName : 'Caller',
+                container : 'video-container'
+            },
+            //Intialize Rtcc Function
+            initializeRtcc = function (token) {
+                // Initialize the Main Object with App Identifier, Token, RtccType, options
+                rtcc = new Rtcc('5vx1l3kvxfd3', token, 'internal', options);
+                // Call if the RtccDriver is not running on the client computer and if the browser is not WebRTC-capable
+                rtcc.onRtccDriverNotStarted = function (downloadUrl) {
+                    var answer = confirm('Click OK to download and install the Rtcc client.');
+                    if (answer === true) { window.location = downloadUrl; }
+                };
+                // Get the Connection Handler callback when the JavaScript is connected to the real-time client
+                rtcc.onConnectionHandler = function (message, code) {
+                    if (window.console) { console.log('Connection Handler : ' + message + ' ' + code); }
+                    switch (message) {
+                    case 'connectedRtccDriver':
+                        realTimeClient = 'RtccDriver';
+                        break;
+                    case 'connectedWebRTC':
+                        realTimeClient = 'WebRTC';
+                        break;
+                    case 'sipOk':
+                        document.getElementById('connecting').style.color = '#CCCCCC';
+                        document.getElementById('stat').innerHTML = 'Connected as Caller using ' + realTimeClient;
+                        document.getElementById('buttonCall').style.display = 'block';
+                        break;
+                    case 'loggedasotheruser':
+                        // force connection, kick other logged users
+                        getToken(UID_USER, function (token){
+                            rtcc.setToken(token);
+                            rtcc.authenticate(1);
+                        });
+                        break;
+                    case 'disconnectedRtccDriver':
+                        getToken(UID_USER, function (token){
+                            rtcc.setToken(token);
+                        });
+                        break;
+                    }
+                };
+                // This function permits to catch events comming from the call
+                rtcc.onCallHandler = function (callObj, args) {
+                    if (args.type === 'call' || args.type === 'webRTCcall'){
+                        if (args.status === 'callCreated') {
+                            document.getElementById('call').innerHTML = 'Calling...';
+                        } else if (args.status === 'active') {
+                            document.getElementById('call').innerHTML = 'Call active';
+                        } else if (args.status === 'terminated') {
+                            document.getElementById('call').innerHTML = '';
+                        }
+                    }
+                };
+                //Initialize connection between the real-time client and the browser
+                rtcc.initialize();
+            },
+             getToken = function (uid, callback) {
+                var xhr;
+                if (window.XMLHttpRequest) { // code for IE7+, Firefox, Chrome, Opera, Safari
+                    xhr = new XMLHttpRequest();
+                } else { // code for IE6, IE5
+                    xhr = new ActiveXObject('Microsoft.XMLHTTP');
+                }
+                xhr.onreadystatechange = function () {
+                    var response = xhr.responseText,
+                        responseJson,
+                        token;
+                    if (xhr.readyState === 4 && xhr.status === 200) {
+                        response = xhr.responseText;
+                        try {
+                            responseJson = JSON.parse(response);
+                        } catch (e) {
+                            document.getElementById('error-content').innerHTML = e.message + '<br />' + e.stack + '<br />Response: ' + response;
+                            document.getElementById('error').style.display = 'block';
+                        }
+                        if (responseJson.error) {
+                            document.getElementById('error-content').innerHTML = 'error code:' + responseJson.error + '<br />Description:' + responseJson.error_description;
+                            document.getElementById('error').style.display = 'block';
+                        } else {
+                            token = responseJson.data;
+                            if (typeof callback === "function"){
+                                callback(token)
+                            }else{
+                                initializeRtcc(token);
+                            }
+                        }
+                    } else if (xhr.readyState === 4 && xhr.status !== 200) {
+                        response = xhr.responseText;
+                        console.log(response);
+                        document.getElementById('error-content').innerHTML = response;
+                        document.getElementById('error').style.display = 'block';
+                    }
+                };
+                xhr.open('GET', AUTH_URL + uid, true);
+                xhr.send();
+            },
+            init = function () {
+                getToken(UID_USER);
+            },
+            createCall = function () {
+                rtcc.createCall('callee_uid', 'internal', 'Callee');
+            },
+            // Test if browser is IE10
+            isIE10 = false,
+            // Poll for jQuery to come into existence
+            checkReady = function (callback) {
+                if (window.jQuery) {
+                    callback();
+                } else {
+                    window.setTimeout(function () { checkReady(callback); }, 100);
+                }
+            };
+        /*@cc_on
+            if (/^10/.test(@_jscript_version)) {
+                isIE10 = true;
+            }
+        @*/
+        if (isIE10) {
+            options.useJquery = true;
+            script = document.createElement('SCRIPT');
+            script.src = 'http://code.jquery.com/jquery-latest.min.js';
+            script.type = 'text/javascript';
+            document.getElementsByTagName('head')[0].appendChild(script);
+            // Start polling...
+            checkReady(init);
+        } else {
+            options.useJquery = false;
+            init();
+        }
+    </script>
+    <h3>Welcome to Rtcc HelloWorld App</h3>
+    <h4 id="connecting">Connecting as Caller...</h4>
+    <h4 id="stat"></h4>
+    <button style="display:none;" id="buttonCall" onclick="createCall()">Click to call Callee</button>
+    <h4 id="call"></h4>
+    If using WebRTC, the call window will be placed in this box with a blue background
+    <div id="video-container"></div>
+</body>
+</html>

@@ -37,7 +37,7 @@
         // Here is the definition of the uid used by this user and the authentication url used in order to get a token
         var UID_USER = 'callee_uid',
             // If you are using our Java, Ruby or Node.js server-SDK uncomment the following line and replace the placeholder YOUR_AUTH_URL wuth your authentication client url
-            AUTH_URL = 'http://shielded-meadow-88527.herokuapp.com/gettoken?uid=',
+            AUTH_URL = 'http://localhost:3000/gettoken?uid=',
             // If you are using our PHP server-SDK uncomment the following line and replace the placeholder YOUR_AUTH_URL wuth your authentication client url
             // AUTH_URL = 'http://YOUR_AUTH_URL/gettoken.php?uid=',
             realTimeClient = '',
@@ -50,6 +50,7 @@
             },
             //Intialize Rtcc Function
             initializeRtcc = function (token) {
+
                 // Initialize the Main Object with App Identifier, Token, RtccType, options
                 var rtcc = new Rtcc('5vx1l3kvxfd3', token, 'internal', options);
                 // Call if the RtccDriver is not running on the client computer and if the browser is not WebRTC-capable
@@ -115,12 +116,14 @@
                     var response = xhr.responseText,
                         responseJson,
                         token;
-                        console.log("Response: " + response);
+
+                        console.log("RESPONSE: " + response)
 
                     if (xhr.readyState === 4 && xhr.status === 200) {
                         response = xhr.responseText;
                         try {
                             responseJson = JSON.parse(response);
+                            console.log("RESPONSE JSON: " + responseJson);
                         } catch (e) {
                             document.getElementById('error-content').innerHTML = e.message + '<br />' + e.stack + '<br />Response: ' + response;
                             document.getElementById('error').style.display = 'block';
@@ -129,7 +132,7 @@
                             document.getElementById('error-content').innerHTML = 'error code:' + responseJson.error + '<br />Description:' + responseJson.error_description;
                             document.getElementById('error').style.display = 'block';
                         } else {
-                            token = responseJson.token;
+                            token = responseJson.data;
                             if (typeof callback === "function"){
                                 callback(token)
                             }else{
