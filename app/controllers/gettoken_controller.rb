@@ -28,7 +28,7 @@ class GettokenController < ApplicationController
     if response.code == "201"
         body = response.read_body
         puts body
-        render json: body.as_json(as_json(:only => [:data]))
+        render json: body.as_json
     end
   end
 end
